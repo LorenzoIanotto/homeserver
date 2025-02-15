@@ -1,0 +1,40 @@
+---
+- name: Install libdnf5
+  ansible.builtin.command:
+    cmd: dnf install -y python3-libdnf5
+  register: ret
+  changed_when: ret.rc == 0
+
+- name: Update packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+
+- name: Install essential packages
+  ansible.builtin.package:
+    name: "{{ system_packages }}"
+    state: latest
+
+- name: Install dnf plugin for auto-updates
+  ansible.builtin.package:
+    name: dnf5-plugin-automatic
+    state: latest
+
+- name: Configure auto-updates
+  ansible.builtin.copy:
+    src: dnf5-automatic/automatic.conf
+    dest: /etc/dnf/automatic.conf
+    mode: "0644"
+
+- name: Configure auto-updates timer
+  ansible.builtin.copy:
+    src: dnf5-automatic/time.conf
+    dest: /etc/systemd/system/dnf5-automatic.timer.d/
+    directory_mode: "0755"
+    mode: "0644"
+
+- name: Enable auto-updates
+  ansible.builtin.service:
+    name: dnf-automatic.timer
+    state: started
+    enabled: yes

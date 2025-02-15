@@ -1,0 +1,10 @@
+---
+- name: Ensure the non-root user is created
+  ansible.builtin.user:
+    name: "{{ system_username }}"
+    password: "{{ system_password | password_hash('sha512') }}"
+    groups:
+      - wheel
+    append: yes
+    shell: "{{ system_shell }}"
+    update_password: on_create

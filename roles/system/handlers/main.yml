@@ -1,0 +1,10 @@
+---
+- name: Restart SSH daemon
+  service:
+    name: sshd
+    state: restarted
+
+- name: Restart logind daemon
+  service:
+    name: systemd-logind
+    state: restarted

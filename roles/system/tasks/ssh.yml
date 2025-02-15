@@ -1,0 +1,8 @@
+---
+- name: Update SSH configuration to be more secure (thanks Jeff!)
+  ansible.builtin.copy:
+    src: ssh_custom.conf
+    dest: /etc/ssh/sshd_config.d/99-homeserver.conf
+    mode: "0644"
+    validate: "sshd -T -f %s"
+  notify: Restart SSH daemon

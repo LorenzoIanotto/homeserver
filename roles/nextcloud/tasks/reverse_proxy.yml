@@ -1,0 +1,63 @@
+---
+- name: Copy Caddy image
+  ansible.builtin.copy:
+    src: caddy
+    dest: /etc
+    directory_mode: "0755"
+    mode: "0644"
+
+- name: Configure Caddy
+  ansible.builtin.template:
+    src: caddy/Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    mode: "0640"
+
+# - name: Create Caddy image
+#   containers.podman.podman_image:
+#     name: caddy-duckdns
+#     state: quadlet
+#     pull: no
+#     push: no
+#     quadlet_file_mode: "0640"
+#     build:
+#       file: /etc/caddy/container/caddy-duckdns.containerfile
+
+- name: Create Caddy image
+  ansible.builtin.copy:
+    src: caddy-duckdns.build
+    dest: /etc/containers/systemd/caddy-duckdns.build
+    mode: "0640"
+
+- name: Create Caddy container
+  containers.podman.podman_container:
+    name: reverse-proxy
+    image: localhost/caddy-duckdns
+    state: quadlet
+    quadlet_file_mode: "0640"
+    network: host
+    volumes:
+      - "/etc/caddy:/etc/caddy:Z"
+      - "caddy_data:/data"
+    quadlet_options:
+      - "AutoUpdate=local"
+      - |
+        [Service]
+        Restart=always
+      - |
+        [Install]
+        WantedBy=default.target
+
+- name: Restart Caddy services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    daemon_reload: yes
+    state: restarted
+    scope: system
+  loop:
+    - caddy-duckdns-build
+    - reverse-proxy
+
+- name: Enable Podman auto-update
+  ansible.builtin.service:
+    name: podman-auto-update.timer
+    enabled: yes

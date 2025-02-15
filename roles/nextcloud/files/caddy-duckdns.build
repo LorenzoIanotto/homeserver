@@ -1,0 +1,9 @@
+[Unit]
+Before=caddy-duckdns-build.service
+
+[Build]
+ImageTag=localhost/caddy-duckdns
+File=/etc/caddy/container/caddy-duckdns.containerfile
+
+[Install]
+RequiredBy=reverse-proxy.service

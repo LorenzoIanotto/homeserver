@@ -1,0 +1,8 @@
+[Unit]
+Description=Turns off the console after 1 minute
+
+[Service]
+ExecStart= /bin/setterm -term linux -blank 1 -powerdown 1 </dev/tty1 >/dev/tty1
+
+[Install]
+WantedBy=multi-user.target

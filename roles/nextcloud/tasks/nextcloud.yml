@@ -1,0 +1,137 @@
+---
+- name: Create db and data directories
+  ansible.builtin.file:
+    name: "{{ nextcloud_data_dir }}/{{ item }}"
+    state: directory
+    owner: nextcloud
+    group: nextcloud
+    setype: container_file_t
+    mode: "0775"
+  become: yes
+  become_user: root
+  loop:
+    - "nextcloud-db/"
+    - "nextcloud-app-data/"
+
+- name: Create nextcloud pod
+  containers.podman.podman_pod:
+    name: nextcloud
+    state: quadlet
+    volumes:
+      - "{{ nextcloud_data_dir }}/nextcloud-app-data:/var/www/html:rw,z"
+      - "{{ nextcloud_data_dir }}/nextcloud-db:/var/lib/postgresql/data:rw,z"
+    ports:
+      - 127.0.0.1:8080:80
+      - "[::1]:8080:80"
+    quadlet_file_mode: "0640"
+
+- name: Create db password podman secret
+  containers.podman.podman_secret:
+    name: nextcloud-db-password
+    state: present
+    data: "{{ nextcloud_db_password }}"
+
+- name: Create Postgres container
+  containers.podman.podman_container:
+    name: "{{ nextcloud_db_host }}"
+    image: docker.io/postgres:16-alpine
+    state: quadlet
+    quadlet_file_mode: "0640"
+    pod: nextcloud.pod
+    secrets:
+      - nextcloud-db-password
+    env:
+      POSTGRES_DB: "{{ nextcloud_db }}"
+      POSTGRES_USER: "{{ nextcloud_db_user }}"
+      POSTGRES_PASSWORD_FILE: /run/secrets/nextcloud-db-password
+    quadlet_options:
+      - "AutoUpdate=registry"
+      - "Pull=newer"
+      - |
+        [Service]
+        Restart=always
+
+# TODO: use unix sockets
+- name: Create Redis container
+  containers.podman.podman_container:
+    name: "{{ nextcloud_redis_host }}"
+    image: docker.io/redis:alpine
+    state: quadlet
+    quadlet_file_mode: "0640"
+    pod: nextcloud.pod
+    quadlet_options:
+      - "AutoUpdate=registry"
+      - "Pull=newer"
+      - |
+        [Service]
+        Restart=always
+
+- name: Create Nextcloud container
+  containers.podman.podman_container:
+    name: "{{ nextcloud_app_host }}"
+    image: docker.io/nextcloud:stable
+    state: quadlet
+    quadlet_file_mode: "0640"
+    pod: nextcloud.pod
+    secrets:
+      - nextcloud-db-password
+    env:
+      TRUSTED_PROXIES: "127.0.0.1 ::1"
+      OVERWRITEHOST: "{{ ansible_host }}"
+      OVERWRITEPROTOCOL: "https"
+      OVERWRITECLIURL: "https://{{ ansible_host }}"
+      NEXTCLOUD_TRUSTED_DOMAINS: "{{ ansible_host }}"
+      NEXTCLOUD_ADMIN_USER: "{{ nextcloud_user }}"
+      NEXTCLOUD_ADMIN_PASSWORD: changeme
+      POSTGRES_DB: "{{ nextcloud_db }}"
+      POSTGRES_USER: "{{ nextcloud_db_user }}"
+      POSTGRES_PASSWORD_FILE: /run/secrets/nextcloud-db-password
+      POSTGRES_HOST: "localhost"
+      REDIS_HOST: "localhost"
+    quadlet_options:
+      - "AutoUpdate=registry"
+      - "Pull=newer"
+      - |
+        [Unit]
+        After={{ nextcloud_db_host }} {{ nextcloud_db_host }}
+      - |
+        [Service]
+        Restart=always
+      - |
+        [Install]
+        WantedBy=default.target
+
+- name: Reload systemd daemon
+  tags: skip_ansible_lint
+  become: yes
+  become_user: root
+  ansible.builtin.command:
+    cmd: "systemctl --user -M nextcloud@ daemon-reload"
+
+- name: Restart Nextcloud services
+  tags: skip_ansible_lint
+  become: yes
+  become_user: root
+  ansible.builtin.command:
+    cmd: "systemctl --user -M nextcloud@ restart nextcloud-pod"
+
+## See https://docs.nextcloud.com/server/30/admin_manual/configuration_server/background_jobs_configuration.html
+
+- name: Enable Nextcloud background jobs
+  ansible.builtin.cron:
+    name: "Nextcloud background jobs"
+    job: "podman exec -u=www-data nextcloud-app php -f /var/www/html/cron.php"
+    minute: 5
+
+# Should wait for nextcloud to be installed
+# - name: Set maintanance window start at midnight
+#   containers.podman.podman_container_exec:
+#     name: "{{ nextcloud_app_host }}"
+#     command: "/var/www/html/occ config:system:set maintenance_window_start --type=integer --value=0"
+#     user: www-data
+
+- name: Enable Podman auto-update
+  ansible.builtin.systemd_service:
+    name: podman-auto-update.timer
+    enabled: yes
+    scope: user

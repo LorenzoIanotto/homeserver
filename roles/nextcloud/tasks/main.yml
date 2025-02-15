@@ -1,0 +1,19 @@
+---
+- name: Configure system to run Nextcloud
+  ansible.builtin.include_tasks: system_setup.yml
+  args:
+    apply:
+      become: yes
+
+- name: Install Nextcloud
+  ansible.builtin.include_tasks: nextcloud.yml
+  args:
+    apply:
+      become_user: nextcloud
+      become: yes
+
+- name: Install Caddy and configure it for Nextcloud
+  ansible.builtin.include_tasks: reverse_proxy.yml
+  args:
+    apply:
+      become: yes

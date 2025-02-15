@@ -1,0 +1,8 @@
+---
+system_username: admin
+system_shell: /bin/bash
+system_packages:
+  - vi
+  - tmux
+  - htop
+  - speedtest-cli

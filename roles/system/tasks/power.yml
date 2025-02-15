@@ -1,0 +1,43 @@
+---
+- name: Configure logind
+  ansible.builtin.copy:
+    src: logind.conf
+    dest: /etc/systemd/logind.conf
+    mode: "0644"
+  notify: Restart logind daemon
+
+- name: Install acpid
+  ansible.builtin.package:
+    name: acpid
+    state: latest
+
+- name: Configure acpi events
+  ansible.builtin.copy:
+    src: acpi/events/anything
+    dest: /etc/acpi/events/anything
+    mode: "0644"
+
+- name: Configure acpi handler
+  ansible.builtin.copy:
+    src: acpi/handler.sh
+    dest: /etc/acpi/handler.sh
+    mode: "0774"
+
+- name: Restart acpid
+  ansible.builtin.service:
+    name: acpid
+    state: restarted
+    enabled: yes
+
+- name: Turn off monitor after a period of time
+  ansible.builtin.copy:
+    src: console-powerdown.service
+    dest: /etc/systemd/system/
+    mode: "0664"
+
+- name: Enable and start console-powerdown
+  ansible.builtin.systemd_service:
+    name: console-powerdown
+    daemon_reload: yes
+    state: restarted
+    enabled: yes

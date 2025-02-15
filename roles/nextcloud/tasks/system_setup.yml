@@ -1,0 +1,37 @@
+---
+- name: Install Podman
+  ansible.builtin.package:
+    name: podman
+    state: latest
+
+- name: Create Nextcloud user
+  ansible.builtin.user:
+    name: nextcloud
+    update_password: on_create
+
+- name: Enable lingering
+  ansible.builtin.command:
+    cmd: loginctl enable-linger nextcloud
+  changed_when: true
+
+- name: Enable http
+  ansible.builtin.firewalld:
+    service: http
+    state: enabled
+    immediate: yes
+    permanent: yes
+
+- name: Enable https
+  ansible.builtin.firewalld:
+    service: https
+    state: enabled
+    immediate: yes
+    permanent: yes
+
+- name: Create Nextcloud data dir
+  ansible.builtin.file:
+    name: "{{ nextcloud_data_dir }}/"
+    state: directory
+    owner: nextcloud
+    group: nextcloud
+    mode: "0770"

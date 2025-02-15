@@ -1,0 +1,13 @@
+{
+    acme_dns duckdns {{ duckdns_token }}
+}
+
+https://{{ ansible_host }} {
+    redir /.well-known/carddav /remote.php/dav/ 301
+    redir /.well-known/caldav /remote.php/dav/ 301
+
+    # Enable HSTS
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains;"
+
+    reverse_proxy http://localhost:8080
+}
