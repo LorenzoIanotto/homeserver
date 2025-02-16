@@ -1,0 +1,8 @@
+---
+- name: "Ensure the backup partition is mounted at {{ backup_dir }}"
+  ansible.posix.mount:
+    src: LABEL=backup
+    path: /var/backup
+    fstype: btrfs
+    opts: defaults,noauto,nosuid,noexec
+    state: mounted

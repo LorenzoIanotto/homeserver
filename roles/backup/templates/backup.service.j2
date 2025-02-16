@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup {{ data_dir }} with Borg
+
+[Service]
+Type=oneshot
+ExecStartPre=sh -c "mountpoint -q {{ backup_dir }} || mount {{ backup_dir }}"
+ExecStart=sh -c "borg create {{ backup_dir }}::$(date -Iminutes) {{ data_dir }} &&\
+                 borg prune --keep-daily 4 --keep-weekly 3 --keep-yearly 1 {{ backup_dir }} &&\
+                 borg compact --cleanup-commits {{ backup_dir }}"
+ExecStartPost=sh -c "sync && umount {{ backup_dir }}"

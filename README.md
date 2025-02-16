@@ -21,3 +21,4 @@ Create a `hosts.ini` file from the template and a `group_vars/all/secret.yml` us
 - Nextcloud and related are user services (`nextcloud`)
 - System updates at 6:00 AM, only security ones
 - Podman auto update at midnight
+- Backup at 4 am

@@ -1,0 +1,34 @@
+---
+- name: Install BorgBackup
+  ansible.builtin.package:
+    name: borgbackup
+    state: latest
+
+- name: Init Borg repo
+  ansible.builtin.command:
+    cmd: "borg init -e none {{ backup_dir }}"
+    creates: "{{ backup_dir }}/README"
+
+- name: Unmount backup dir
+  ansible.posix.mount:
+    path: "{{ backup_dir }}"
+    state: unmounted
+
+- name: Install timer for Borg periodic backups
+  ansible.builtin.copy:
+    src: backup.timer
+    dest: /etc/systemd/system/
+    mode: "0664"
+
+- name: Install service for Borg periodic backups
+  ansible.builtin.template:
+    src: backup.service.j2
+    dest: /etc/systemd/system/backup.service
+    mode: "0664"
+
+- name: Enable backup timer
+  ansible.builtin.systemd:
+    name: backup.timer
+    state: started
+    enabled: yes
+    daemon_reload: yes

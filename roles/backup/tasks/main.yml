@@ -1,0 +1,3 @@
+---
+- ansible.builtin.include_tasks: disk.yml
+- ansible.builtin.include_tasks: borg.yml
