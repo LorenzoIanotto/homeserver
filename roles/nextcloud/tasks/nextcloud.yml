@@ -121,7 +121,7 @@
   ansible.builtin.cron:
     name: "Nextcloud background jobs"
     job: "podman exec -u=www-data nextcloud-app php -f /var/www/html/cron.php"
-    minute: 5
+    minute: "*/5"
 
 # Should wait for nextcloud to be installed
 # - name: Set maintanance window start at midnight
